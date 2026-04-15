@@ -170,7 +170,14 @@ const plugin = (args:IpluginInputArgs):IpluginOutputArgs => {
     subtitleSettings.subOutput.forEach((element) => {
       args.variables.ffmpegCommand.multiOutputArguments.push(element);
     });
-    args.variables.user.sub_tmp_path = String(args.inputs.sub_tmp_path);
+
+    if (!args.variables.user) {
+      // eslint-disable-next-line no-param-reassign
+      args.variables.user = {};
+    }
+
+    // eslint-disable-next-line no-param-reassign
+    args.variables.user['sub_tmp_path'] = String(args.inputs.sub_tmp_path);
   }
 
   return {
