@@ -59,6 +59,16 @@ const details = (): IpluginDetails => ({
         + 'https://radarr.domain.com\\n'
         + 'https://sonarr.domain.com\\n',
     },
+    {
+      label: 'Include subtitles?',
+      name: 'move_subtitles',
+      type: 'boolean',
+      defaultValue: 'false',
+      inputUI: {
+        type: 'switch',
+      },
+      tooltip: 'Will rename subtitles first, then the content'
+    }
   ],
   outputs: [
     {
@@ -170,6 +180,51 @@ const getFileInfo = async (
     : fInfo;
 };
 
+import * as fs from 'fs';
+import * as path from 'path';
+
+const renameSubtitle = async (args: IpluginInputArgs, oldPath: string, newPath: string) =>
+{
+  const filePath = newPath;           // current video path (after replace)
+  const dir = path.dirname(filePath);
+  const videoExt = path.extname(filePath);
+  const baseNameWithoutExt = path.basename(filePath, videoExt);
+
+  const oldBaseName = oldPath;
+  const oldVideoExt = path.extname(oldBaseName)
+  const oldBaseNameWithoutExt = path.basename(oldBaseName, oldVideoExt);
+
+  const files = fs.readdirSync(dir);
+  
+  const promises = files.map(async (file) => {
+    const ext = path.extname(file).toLowerCase();
+    if (!['.srt', '.mks', '.ass', '.ssa', '.vtt', '.sub', '.idx'].includes(ext)) return;
+
+    if (file.includes(oldBaseNameWithoutExt)) {   // Only subtitles from this episode
+      // Build new subtitle name by replacing the old part with the new base
+      const newSubName = baseNameWithoutExt + path.extname(file);   // Keeps .eng.mks, .ita.forced.mks etc.
+
+      if (file !== newSubName) {
+        const oldFull = path.join(dir, file);
+        const newFull = path.join(dir, newSubName);
+
+        return await fileMoveOrCopy(
+          {
+            operation: 'move',
+            sourcePath: oldFull,
+            destinationPath: newFull,
+            args,
+          }
+        );
+      }
+      return;
+    }
+  });
+
+  await Promise.all(promises);
+};
+
+
 const plugin = async (args: IpluginInputArgs): Promise<IpluginOutputArgs> => {
   const lib = require('../../../../../methods/lib')();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-param-reassign
@@ -179,6 +234,7 @@ const plugin = async (args: IpluginInputArgs): Promise<IpluginOutputArgs> => {
   let isSuccessful = false;
   const arr = String(args.inputs.arr);
   const arr_host = String(args.inputs.arr_host).trim();
+  const move_subtitles = Boolean(args.inputs.move_subtitles);
   const arrHost = arr_host.endsWith('/') ? arr_host.slice(0, -1) : arr_host;
   const originalFileName = args.originalLibraryFile?._id ?? '';
   const currentFileName = args.inputFileObj?._id ?? '';
@@ -268,6 +324,11 @@ const plugin = async (args: IpluginInputArgs): Promise<IpluginOutputArgs> => {
       newPath = `${getFileAbsoluteDir(currentFileName)
       }/${getFileName(fileToRename.newPath)
       }.${getContainer(fileToRename.newPath)}`;
+
+      if (move_subtitles) {
+        args.jobLog(`Renaming subtitles using name ${currentFileName} to ${newPath}`);
+        await renameSubtitle(args, currentFileName, newPath);
+      }
 
       isSuccessful = await fileMoveOrCopy({
         operation: 'move',

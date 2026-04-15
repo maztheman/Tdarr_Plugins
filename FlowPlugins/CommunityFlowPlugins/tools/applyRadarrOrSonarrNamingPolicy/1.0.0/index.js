@@ -10,6 +10,39 @@ var __assign = (this && this.__assign) || function () {
     };
     return __assign.apply(this, arguments);
 };
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -103,6 +136,16 @@ var details = function () { return ({
                 + 'https://radarr.domain.com\\n'
                 + 'https://sonarr.domain.com\\n',
         },
+        {
+            label: 'Include subtitles?',
+            name: 'move_subtitles',
+            type: 'boolean',
+            defaultValue: 'false',
+            inputUI: {
+                type: 'switch',
+            },
+            tooltip: 'Will rename subtitles first, then the content'
+        }
     ],
     outputs: [
         {
@@ -173,8 +216,55 @@ var getFileInfo = function (args, arrApp, fileName) { return __awaiter(void 0, v
         }
     });
 }); };
+var fs = __importStar(require("fs"));
+var path = __importStar(require("path"));
+var renameSubtitle = function (args, oldPath, newPath) { return __awaiter(void 0, void 0, void 0, function () {
+    var filePath, dir, videoExt, baseNameWithoutExt, oldBaseName, oldVideoExt, oldBaseNameWithoutExt, files, promises;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                filePath = newPath;
+                dir = path.dirname(filePath);
+                videoExt = path.extname(filePath);
+                baseNameWithoutExt = path.basename(filePath, videoExt);
+                oldBaseName = oldPath;
+                oldVideoExt = path.extname(oldBaseName);
+                oldBaseNameWithoutExt = path.basename(oldBaseName, oldVideoExt);
+                files = fs.readdirSync(dir);
+                promises = files.map(function (file) { return __awaiter(void 0, void 0, void 0, function () {
+                    var ext, newSubName, oldFull, newFull;
+                    return __generator(this, function (_a) {
+                        switch (_a.label) {
+                            case 0:
+                                ext = path.extname(file).toLowerCase();
+                                if (!['.srt', '.mks', '.ass', '.ssa', '.vtt', '.sub', '.idx'].includes(ext))
+                                    return [2 /*return*/];
+                                if (!file.includes(oldBaseNameWithoutExt)) return [3 /*break*/, 3];
+                                newSubName = baseNameWithoutExt + path.extname(file);
+                                if (!(file !== newSubName)) return [3 /*break*/, 2];
+                                oldFull = path.join(dir, file);
+                                newFull = path.join(dir, newSubName);
+                                return [4 /*yield*/, (0, fileMoveOrCopy_1.default)({
+                                        operation: 'move',
+                                        sourcePath: oldFull,
+                                        destinationPath: newFull,
+                                        args: args,
+                                    })];
+                            case 1: return [2 /*return*/, _a.sent()];
+                            case 2: return [2 /*return*/];
+                            case 3: return [2 /*return*/];
+                        }
+                    });
+                }); });
+                return [4 /*yield*/, Promise.all(promises)];
+            case 1:
+                _a.sent();
+                return [2 /*return*/];
+        }
+    });
+}); };
 var plugin = function (args) { return __awaiter(void 0, void 0, void 0, function () {
-    var lib, newPath, isSuccessful, arr, arr_host, arrHost, originalFileName, currentFileName, headers, arrApp, fInfo, previewRenameRequestResult, fileToRename;
+    var lib, newPath, isSuccessful, arr, arr_host, move_subtitles, arrHost, originalFileName, currentFileName, headers, arrApp, fInfo, previewRenameRequestResult, fileToRename;
     var _a, _b, _c, _d;
     return __generator(this, function (_e) {
         switch (_e.label) {
@@ -186,6 +276,7 @@ var plugin = function (args) { return __awaiter(void 0, void 0, void 0, function
                 isSuccessful = false;
                 arr = String(args.inputs.arr);
                 arr_host = String(args.inputs.arr_host).trim();
+                move_subtitles = Boolean(args.inputs.move_subtitles);
                 arrHost = arr_host.endsWith('/') ? arr_host.slice(0, -1) : arr_host;
                 originalFileName = (_b = (_a = args.originalLibraryFile) === null || _a === void 0 ? void 0 : _a._id) !== null && _b !== void 0 ? _b : '';
                 currentFileName = (_d = (_c = args.inputFileObj) === null || _c === void 0 ? void 0 : _c._id) !== null && _d !== void 0 ? _d : '';
@@ -253,7 +344,7 @@ var plugin = function (args) { return __awaiter(void 0, void 0, void 0, function
                 fInfo = _e.sent();
                 _e.label = 3;
             case 3:
-                if (!(fInfo.id !== '-1')) return [3 /*break*/, 7];
+                if (!(fInfo.id !== '-1')) return [3 /*break*/, 9];
                 return [4 /*yield*/, args.deps.axios({
                         method: 'get',
                         url: arrApp.delegates.buildPreviewRenameResquestUrl(fInfo),
@@ -263,22 +354,28 @@ var plugin = function (args) { return __awaiter(void 0, void 0, void 0, function
                 previewRenameRequestResult = _e.sent();
                 fileToRename = arrApp.delegates
                     .getFileToRenameFromPreviewRenameResponse(previewRenameRequestResult, fInfo);
-                if (!(fileToRename !== undefined)) return [3 /*break*/, 6];
+                if (!(fileToRename !== undefined)) return [3 /*break*/, 8];
                 newPath = "".concat((0, fileUtils_1.getFileAbsoluteDir)(currentFileName), "/").concat((0, fileUtils_1.getFileName)(fileToRename.newPath), ".").concat((0, fileUtils_1.getContainer)(fileToRename.newPath));
-                return [4 /*yield*/, (0, fileMoveOrCopy_1.default)({
-                        operation: 'move',
-                        sourcePath: currentFileName,
-                        destinationPath: newPath,
-                        args: args,
-                    })];
+                if (!move_subtitles) return [3 /*break*/, 6];
+                args.jobLog("Renaming subtitles using name ".concat(currentFileName, " to ").concat(newPath));
+                return [4 /*yield*/, renameSubtitle(args, currentFileName, newPath)];
             case 5:
+                _e.sent();
+                _e.label = 6;
+            case 6: return [4 /*yield*/, (0, fileMoveOrCopy_1.default)({
+                    operation: 'move',
+                    sourcePath: currentFileName,
+                    destinationPath: newPath,
+                    args: args,
+                })];
+            case 7:
                 isSuccessful = _e.sent();
-                return [3 /*break*/, 7];
-            case 6:
+                return [3 /*break*/, 9];
+            case 8:
                 isSuccessful = true;
                 args.jobLog('✔ No rename necessary.');
-                _e.label = 7;
-            case 7: return [2 /*return*/, {
+                _e.label = 9;
+            case 9: return [2 /*return*/, {
                     outputFileObj: isSuccessful && newPath !== ''
                         ? __assign(__assign({}, args.inputFileObj), { _id: newPath }) : args.inputFileObj,
                     outputNumber: isSuccessful ? 1 : 2,
