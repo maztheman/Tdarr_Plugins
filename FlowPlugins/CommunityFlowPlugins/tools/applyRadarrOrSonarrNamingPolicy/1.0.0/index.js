@@ -218,6 +218,15 @@ var getFileInfo = function (args, arrApp, fileName) { return __awaiter(void 0, v
 }); };
 var fs = __importStar(require("fs"));
 var path = __importStar(require("path"));
+function isNonEmptyFileSync(filePath) {
+    try {
+        var stats = fs.statSync(filePath);
+        return stats.isFile() && stats.size > 0;
+    }
+    catch (error) {
+        return false;
+    }
+}
 var renameSubtitle = function (args, oldPath, newPath) { return __awaiter(void 0, void 0, void 0, function () {
     var filePath, dir, videoExt, baseNameWithoutExt, oldBaseName, oldVideoExt, oldBaseNameWithoutExt, files, promises;
     return __generator(this, function (_a) {
@@ -234,26 +243,26 @@ var renameSubtitle = function (args, oldPath, newPath) { return __awaiter(void 0
                 promises = files.map(function (file) { return __awaiter(void 0, void 0, void 0, function () {
                     var ext, newSubName, oldFull, newFull;
                     return __generator(this, function (_a) {
-                        switch (_a.label) {
-                            case 0:
-                                ext = path.extname(file).toLowerCase();
-                                if (!['.srt', '.mks', '.ass', '.ssa', '.vtt', '.sub', '.idx'].includes(ext))
-                                    return [2 /*return*/];
-                                if (!file.includes(oldBaseNameWithoutExt)) return [3 /*break*/, 3];
-                                newSubName = baseNameWithoutExt + path.extname(file);
-                                if (!(file !== newSubName)) return [3 /*break*/, 2];
+                        ext = path.extname(file).toLowerCase();
+                        if (!['.srt', '.mks', '.ass', '.ssa', '.vtt', '.sub', '.idx'].includes(ext))
+                            return [2 /*return*/];
+                        if (file.includes(oldBaseNameWithoutExt)) { // Only subtitles from this episode
+                            newSubName = baseNameWithoutExt + path.extname(file);
+                            if (file !== newSubName) {
                                 oldFull = path.join(dir, file);
                                 newFull = path.join(dir, newSubName);
-                                return [4 /*yield*/, (0, fileMoveOrCopy_1.default)({
-                                        operation: 'move',
-                                        sourcePath: oldFull,
-                                        destinationPath: newFull,
-                                        args: args,
-                                    })];
-                            case 1: return [2 /*return*/, _a.sent()];
-                            case 2: return [2 /*return*/];
-                            case 3: return [2 /*return*/];
+                                try {
+                                    if (fs.existsSync(oldFull) && !fs.existsSync(newFull)) {
+                                        fs.renameSync(oldFull, newFull);
+                                        args.jobLog("Renamed subtitle: ".concat(file, " -> ").concat(newSubName));
+                                    }
+                                }
+                                catch (err) {
+                                }
+                            }
+                            return [2 /*return*/];
                         }
+                        return [2 /*return*/];
                     });
                 }); });
                 return [4 /*yield*/, Promise.all(promises)];

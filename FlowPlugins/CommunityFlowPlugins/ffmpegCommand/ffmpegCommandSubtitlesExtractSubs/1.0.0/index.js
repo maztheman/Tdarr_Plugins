@@ -28,6 +28,16 @@ var details = function () { return ({
             },
             tooltip: 'Overwrite with the extracted SRT files',
         },
+        {
+            label: 'Temp folder to extract to',
+            name: 'sub_tmp_path',
+            type: 'string',
+            defaultValue: '',
+            inputUI: {
+                type: 'directory'
+            },
+            tooltip: 'If you enter a directory, this is where the subtitle files will be moved to, for later processing'
+        }
     ],
     outputs: [
         {
@@ -55,6 +65,7 @@ function getLanguageCode(input) {
 }
 var buildSubtitleConfiguration = function (args) {
     var overwrite = Boolean(args.inputs.overwrite);
+    var sub_tmp_path = String(args.inputs.sub_tmp_path);
     var fs = require('fs');
     var subIdx = -1;
     var subtitleSettings = {
@@ -114,9 +125,14 @@ var buildSubtitleConfiguration = function (args) {
         if (!boolTextSubs && !boolImageSubs) {
             return;
         }
+        if (!sub_tmp_path || sub_tmp_path.trim().length === 0) {
+            // str is null, undefined, empty, or just whitespace
+        }
         // Build subtitle file names.
         var fileName = (0, fileUtils_1.getFileName)(args.originalLibraryFile._id);
-        var orignalFolder = (0, fileUtils_1.getFileAbsoluteDir)(args.originalLibraryFile._id);
+        var orignalFolder = (!sub_tmp_path || sub_tmp_path.trim().length === 0)
+            ? (0, fileUtils_1.getFileAbsoluteDir)(args.originalLibraryFile._id)
+            : sub_tmp_path;
         var tempsubsFile = [orignalFolder, '/', fileName];
         if (lang === '') {
             tempsubsFile.push(".und".concat(strDisposition, ".").concat(subExt));
