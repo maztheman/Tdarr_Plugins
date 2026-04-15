@@ -95,6 +95,8 @@ export interface IffmpegCommand {
     shouldProcess: boolean,
     overallInputArguments: string[],
     overallOuputArguments: string[],
+    multiInputArguments: string[],
+    multiOutputArguments: string[],
 }
 
 export interface IliveSizeCompare {
