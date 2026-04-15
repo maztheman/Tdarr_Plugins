@@ -217,18 +217,13 @@ const renameSubtitle = async (args: IpluginInputArgs, oldPath: string, newPath: 
         const oldFull = path.join(dir, file);
         const newFull = path.join(dir, newSubName);
 
-        if (!isNonEmptyFileSync(oldFull)) {
-          return;
-        }
-
-        return await fileMoveOrCopy(
-          {
-            operation: 'move',
-            sourcePath: oldFull,
-            destinationPath: newFull,
-            args,
+        try {
+          if (fs.existsSync(oldFull) && !fs.existsSync(newFull)) {
+            fs.renameSync(oldFull, newFull);
+            args.jobLog(`Renamed subtitle: ${file} -> ${newSubName}`);
           }
-        );
+        } catch (err) {
+        }
       }
       return;
     }
