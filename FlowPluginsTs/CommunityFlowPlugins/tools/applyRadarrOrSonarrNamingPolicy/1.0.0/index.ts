@@ -183,6 +183,15 @@ const getFileInfo = async (
 import * as fs from 'fs';
 import * as path from 'path';
 
+function isNonEmptyFileSync(filePath: string): boolean {
+  try {
+    const stats = fs.statSync(filePath);
+    return stats.isFile() && stats.size > 0;
+  } catch (error) {
+    return false;
+  }
+}
+
 const renameSubtitle = async (args: IpluginInputArgs, oldPath: string, newPath: string) =>
 {
   const filePath = newPath;           // current video path (after replace)
@@ -207,6 +216,10 @@ const renameSubtitle = async (args: IpluginInputArgs, oldPath: string, newPath: 
       if (file !== newSubName) {
         const oldFull = path.join(dir, file);
         const newFull = path.join(dir, newSubName);
+
+        if (!isNonEmptyFileSync(oldFull)) {
+          return;
+        }
 
         return await fileMoveOrCopy(
           {
